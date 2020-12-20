@@ -1,0 +1,6 @@
+.env
+creds.mjs
+node_modules/
+favs.ndjson
+db.json
+package-lock.json

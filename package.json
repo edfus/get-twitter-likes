@@ -1,0 +1,14 @@
+{
+  "name": "get-twitter-likes",
+  "version": "3.0.1",
+  "description": "none",
+  "main": "index.js",
+  "scripts": {
+    "get": "node index.mjs"
+  },
+  "author": "e",
+  "license": "ISC",
+  "dependencies": {
+    "request": "^2.88.2"
+  }
+}
