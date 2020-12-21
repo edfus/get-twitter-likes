@@ -6,7 +6,7 @@
   "scripts": {
     "get": "node index.mjs"
   },
-  "author": "e",
+  "author": "edfus",
   "license": "ISC",
   "dependencies": {
     "request": "^2.88.2"

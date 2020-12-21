@@ -2,7 +2,6 @@ import request from 'request'; // switching to request for oauth convenience.
 import credentials from "./creds.mjs";
 import fs from "fs";
 
-// https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/get-favorites-list
 const params = {
   screen_name: credentials.username,
   count: 200, // Must be less than or equal to 200;
@@ -40,7 +39,7 @@ const result_path = './favs.ndjson';
     if(!db.has(status.id_str)) {
       db.add(status.id_str);
       favs.write(JSON.stringify(status));
-      favs.write("\n");
+      favs.write("\n"); // in ndjson syntax
     } else console.info(`${status.id_str} exists in db`);
   }
 
@@ -54,8 +53,21 @@ const result_path = './favs.ndjson';
 // functions
 
 //NOTE: https://github.com/tweepy/tweepy/blob/8dba191518366fb756440302eff86d5a868e0306/tweepy/cursor.py#L127
+
+/**
+ * https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/get-favorites-list
+ * 
+ * There is a possibility that the first 200 likes we fetched contain a status that is so old
+ * that an according "void" will occur
+ * — Favs born after it but weren't the 200 most recent Tweets liked would be invisible to us.
+ * (sequential ids are assigned to the original statuses)
+ * 
+ * Solution: we only ask for *5* most recently liked Tweets in the initial fetch,
+ * Just make sure the top 5 Tweets in your https://twitter.com/YOURUSERNAME/likes timeline
+ * is up to date.
+ */
 async function* cursorAllFavs (max_id) {
-  const statuses = await (max_id ? fetchFav({ max_id }) : fetchFav()); // short hand
+  const statuses = await (max_id ? fetchFav({ max_id }) : fetchFav({ count: 5 }));
 
   if(max_id && max_id === statuses[0].id_str) // if(max_id): not the first fetch
       statuses.shift();
@@ -68,7 +80,7 @@ async function* cursorAllFavs (max_id) {
      */
 
   if(!statuses.length)
-    return ;
+      return ;
 
   // get the minimum id
   let min_id_index = 0;
