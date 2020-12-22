@@ -64,7 +64,7 @@ const result_path = './favs.ndjson';
  * — Favs born after it but weren't the 200 most recent Tweets liked would be invisible to us.
  * (sequential ids are assigned to the original statuses)
  * 
- * Solution: we only ask for *5* most recently liked Tweets in the initial fetch,
+ * Solution: we only ask for *5* most recently liked Tweets in the initial fetch.
  * Just make sure the top 5 Tweets in your https://twitter.com/YOURUSERNAME/likes timeline
  * is up to date.
  */

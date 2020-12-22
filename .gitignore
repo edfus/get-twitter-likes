@@ -2,5 +2,5 @@
 creds.mjs
 node_modules/
 favs.ndjson
-db.csv
+*.csv
 package-lock.json
