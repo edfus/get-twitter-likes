@@ -1,6 +1,7 @@
 import request from 'request'; // switching to request for oauth convenience.
 import credentials from "./creds.mjs";
 import fs from "fs";
+import SetDB from "./set-db.mjs"
 
 const params = {
   screen_name: credentials.username,
@@ -26,12 +27,14 @@ const fetch = request.defaults({
 });
 
 // main
-const db_path = './db.json';
+const db_path = './db.csv'; // Comma-separated values
 const result_path = './favs.ndjson';
 
 (async () => {
-  const db = new Set(fs.existsSync(db_path) ? JSON.parse(fs.readFileSync(db_path)) : void 0);
+  const db = new SetDB(db_path);
   const favs = fs.createWriteStream(result_path, {flags:'a'});
+  
+  await db.loaded;
 
   let counter = 0;
   for await (const status of cursorAllFavs()) {
@@ -44,7 +47,6 @@ const result_path = './favs.ndjson';
   }
 
   favs.end(() => {
-    fs.writeFileSync(db_path, JSON.stringify(Array.from(db)));
     console.info("Done.");
     process.exit(0)
   })
