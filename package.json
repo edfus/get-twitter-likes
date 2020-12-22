@@ -1,10 +1,19 @@
 {
   "name": "get-twitter-likes",
-  "version": "3.0.1",
-  "description": "none",
+  "version": "3.1.1",
+  "description": "Fetch a list of Tweets you liked via Twitter's api",
   "main": "index.js",
   "scripts": {
-    "get": "node index.mjs"
+    "get": "node index.mjs",
+    "test": "node test.mjs"
+  },
+  "website": "https://github.com/edfus/get-twitter-likes",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/edfus/get-twitter-likes.git"
+  },
+  "bugs": {
+    "url": "https://github.com/edfus/get-twitter-likes/issues"
   },
   "author": "edfus",
   "license": "ISC",

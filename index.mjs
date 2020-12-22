@@ -1,3 +1,4 @@
+//TODO: remove dependency request
 import request from 'request'; // switching to request for oauth convenience.
 import credentials from "./creds.mjs";
 import fs from "fs";
