@@ -11,7 +11,7 @@
 
 ## Intallation
 
-###### 1. download
+##### 1. Download
 
 Using git:
 
@@ -22,7 +22,7 @@ cd  get-twitter-likes
 
 or download manually via <https://github.com/edfus/get-twitter-likes/archive/master.zip>
 
-###### 2. install
+##### 2. Install
 
 Make sure you have [Node.js](https://nodejs.org/en/) & npm installed on your machine before proceeding.
 
@@ -31,11 +31,13 @@ Make sure you have [Node.js](https://nodejs.org/en/) & npm installed on your mac
 npm install
 ```
 
-Node.js version equal to or higher than 10.3.0 supported. (unconfirmed tho)
+Node.js version equal to or higher than 13 supported. (async generator: 10.3.0, module import: 13)
 
-###### 3. create an application at apps.twitter.com
+##### 3. Create an application at apps.twitter.com
 
-###### 3. create creds.mjs in the directory, put keys from your application
+URL: <https://developer.twitter.com/en/apps>
+
+##### 4. Create creds.mjs in the directory. Put keys from your application
 
 with file content as following
 
@@ -49,22 +51,18 @@ export default {
 }
 ```
 
-you can just rename `creds-template.mjs` to `creds.mjs` and put them too.
+you can just rename `creds-template.mjs` to `creds.mjs` and put them.
 
-###### 3. run
+##### 5. Run
 
 ```bash
 npm run get
 ```
 
-###### 4. get the results in `favs.ndjson`
-
-## Personalize
+##### 6. Get the results in `favs.ndjson`
 
 ## If proxy required
 
-de-annotate below line in `index.mjs`
-
-- `proxy: "http://127.0.0.1:7890"`
+de-annotate `proxy: "http://127.0.0.1:7890"` in `index.mjs`
 
 Don't forget to modify the `http://127.0.0.1:7890` part to meet your proxy configuration!
