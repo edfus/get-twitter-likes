@@ -1,29 +1,24 @@
-import { request as request_http } from "http";
+import { request as http_connect } from "http";
 import { request as request_https } from "https";
-
-const http_connect = request_http;
 
 async function fetch(url, options) {
   const uriObject = url instanceof URL ? url : new URL(url);
+  if(uriObject.protocol !== "https:")
+    throw `${url}.protocol !== https:`;
   return new Promise((resolve, reject) => {
     http_connect(
       options.proxy,
       {
         method: "CONNECT",
-        path: constructHost(uriObject),
+        path: uriObject.hostname.concat(uriObject.port || ":443"),
         headers: {
           "Proxy-Authorization": `Basic ${Buffer.from(`${"username"}":"${"password"}`).toString("base64")}`
         },
       }
     )
       .once("connect", (response, socket) => {
-        if (response.statusCode === 200) { // connected to proxy server
-          const request = uriObject.protocol === "https:"
-                          ? request_https
-                          : request_http
-                          ;
-
-          request (
+        if (response.statusCode === 200) {
+          request_https (
             uriObject,
             {
               method: options.method || "GET",
@@ -48,20 +43,6 @@ async function fetch(url, options) {
       .once("error", reject)
       .end();
   })
-}
-
-function constructHost(uriObject) {
-  let port = uriObject.port;
-
-  if (!port) {
-    if (uriObject.protocol === "https:") {
-      port = "443"
-    } else {
-      port = "80"
-    }
-  }
-
-  return `${uriObject.hostname}:${port}`;
 }
 
 export { fetch };
