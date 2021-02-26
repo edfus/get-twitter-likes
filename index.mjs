@@ -1,39 +1,33 @@
-//TODO: remove dependency request
-import request from 'request'; // switching to request for oauth convenience.
+import { createWriteStream } from "fs";
+import { pipeline } from "stream";
+import { fetch as proxyFetch } from "./proxy-tunnel.mjs";
+import { getOauthData, getOauthHeader } from "./oauth.mjs";
 import credentials from "./creds.mjs";
-import fs from "fs";
 import SetDB from "./set-db.mjs"
-
-const params = {
-  screen_name: credentials.username,
-  count: 200, // Must be less than or equal to 200;
-  include_entities: true,
-  tweet_mode: 'extended'
-};
-
-const fetch = request.defaults({
-  headers: {
-    "Accept": "*/*",
-    "Content-type": "application/json",
-    "Connection": 'close',
-    'User-Agent': 'some meaningless text',
-  },
-  // proxy: "http://127.0.0.1:7890",  //NOTE: de-annotate this line if proxy required
-  oauth: {
-    consumer_key: credentials.consumer_key,
-    consumer_secret: credentials.consumer_secret,
-    token: credentials.access_token_key,
-    token_secret: credentials.access_token_secret,
-  }
-});
 
 // main
 const db_path = './db.csv'; // Comma-separated values
 const result_path = './favs.ndjson';
 
+const useProxy = true;
+const proxy = "http://127.0.0.1:7890";
+
+if(
+  !credentials.username
+  ||
+  !credentials.consumer_key
+  ||
+  !credentials.consumer_secret
+  ||
+  !credentials.access_token_key
+  ||
+  !credentials.access_token_secret
+)
+ throw "insufficient credentials";
+
 (async () => {
   const db = new SetDB(db_path);
-  const favs = fs.createWriteStream(result_path, {flags:'a'});
+  const favs = createWriteStream(result_path, { flags:'a' });
   
   await db.loaded;
 
@@ -54,6 +48,12 @@ const result_path = './favs.ndjson';
 })()
 
 // functions
+const params = {
+  screen_name: credentials.username,
+  count: 200, // Must be less than or equal to 200;
+  include_entities: true,
+  tweet_mode: 'extended'
+};
 
 //NOTE: https://github.com/tweepy/tweepy/blob/8dba191518366fb756440302eff86d5a868e0306/tweepy/cursor.py#L127
 
@@ -111,19 +111,79 @@ async function* cursorAllFavs (max_id) {
 }
 
 async function fetchFav (additionalParams) {
-  return new Promise((resolve, reject) => {
-    fetch({
-      method: "get",
-      url: "https://api.twitter.com/1.1/favorites/list.json",
-      qs: additionalParams ? {...params, ...additionalParams} : params
-    }, (error, response, body) => {
-      if(error) return reject(error);
-      if(response.statusCode === 200) {
-        console.info(`x-rate-limit-remaining: ${response.headers["x-rate-limit-remaining"]}`);
-        return resolve(JSON.parse(body));
-      } else reject(response);
-    })
+  return oauthFetch(
+    "https://api.twitter.com/1.1/favorites/list.json",
+    {
+      method: "GET",
+      qs: additionalParams ? {...params, ...additionalParams} : params,
+      headers: {
+        "Accept": "application/json"
+      }
+    }
+  ).then(response => {
+    if(response.statusCode === 200) {
+      console.info(`x-rate-limit-remaining: ${response.headers["x-rate-limit-remaining"]}`);
+      return new Promise((resolve, reject) => {
+        let chunks = [];
+        response
+          .on("error", reject)
+          .on("data", chunk => chunks.push(chunk))
+          .on("end", () => {
+            try {
+              const text = Buffer.concat(chunks).toString();
+              chunks = null;
+              return resolve(JSON.parse(text));
+            } catch (error) {
+              return reject(error);
+            }
+          })
+      });
+    } else {
+      return new Promise((resolve, reject) => {
+        try {
+          pipeline(
+            response,
+            createWriteStream("./log.tmp.txt"),
+            err => 
+              err
+              ? reject(err)
+              : reject(
+                `${response.statusCode} ${response.statusMessage}. Details in ./log.tmp.txt`
+              )
+          )
+        } catch (error) {
+          reject(error);
+        }
+      })
+    }
   })
 }
 
-// fetchFav().then(data => fs.writeFileSync("./temp.json", data));
+async function oauthFetch (url, options) {
+  const uriObject = new URL(url);
+
+  Object.entries(options.qs)
+        .forEach(([key, value]) => uriObject.searchParams.set(key, value))
+
+  options.headers.Authorization = getOauthHeader(
+    getOauthData(
+      credentials, 
+      {
+        url: uriObject,
+        method: options.method
+      }
+    )
+  ).Authorization;
+
+  if(useProxy) {
+    options.proxy = proxy;
+    return proxyFetch(uriObject, options);
+  } else {
+    return new Promise((resolve, reject) => {
+      request_https(uriObject, options)
+        .once("response", resolve)
+        .once("error", reject)
+        .end();
+    });
+  }
+}
