@@ -33,9 +33,13 @@ async function fetch(url, options) {
             }
           )
             .once("response", resolve)
-            .once("error", reject)
+            .once("error", err => {
+              socket.destroy();
+              return reject(err);
+            })
             .end();
         } else {
+          socket.destroy();
           return reject(
             `connecting to proxy ${options.proxy} failed with ${response.statusCode} ${response.statusMessage}`
           );
