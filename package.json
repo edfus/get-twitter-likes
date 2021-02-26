@@ -5,6 +5,7 @@
   "main": "index.js",
   "scripts": {
     "get": "node index.mjs",
+    "g": "node index.mjs",
     "test": "node test.mjs"
   },
   "website": "https://github.com/edfus/get-twitter-likes",
@@ -17,11 +18,11 @@
   },
   "author": "edfus",
   "license": "ISC",
-  "dependencies": {
-    "request": "^2.88.2"
-  },
   "type": "module",
   "engines": {
     "node": ">= 13.0.0"
+  },
+  "devDependencies": {
+    "oauth-1.0a": "^2.2.6"
   }
 }

@@ -1,14 +1,14 @@
-import fs from "fs";
+import { createReadStream, createWriteStream, existsSync } from "fs";
 
 class SetDB extends Set {
   file = null
   constructor (path) {
     super();
 
-    if(fs.existsSync(path)) {
+    if(existsSync(path)) {
       let buffer = '';
       this.loaded = new Promise((resolve, reject) => {
-        fs.createReadStream(path)
+        createReadStream(path)
             .setEncoding('utf8')
             .on("end", resolve)
             .on("error", reject)
@@ -26,7 +26,7 @@ class SetDB extends Set {
       })
     }
 
-    this.file = fs.createWriteStream(path, {flags: "a"})
+    this.file = createWriteStream(path, { flags: "a" })
   }
 
   add (item) {
