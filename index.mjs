@@ -13,6 +13,9 @@ const result_path = './favs.ndjson';
 const useProxy = extractArg(/--(https?[-_])?proxy/) !== false;
 const proxy = extractArg(/--(https?[-_])?proxy=/) || "http://127.0.0.1:7890";
 
+if (useProxy)
+  console.info("Using proxy: ".concat(proxy));
+
 const in_db_counter_limit = 20;
 const smart_exit = extractArg(/--smart-exit/) && extractArg(/--smart-exit=/) !== "false";
 
@@ -95,7 +98,7 @@ const params = {
  * is up to date.
  */
 async function* cursorAllFavs (max_id) {
-  const statuses = await (max_id ? fetchFav({ max_id }) : fetchFav({ count: 5 }));
+  const { rateLimit, statuses } = await (max_id ? fetchFav({ max_id }) : fetchFav({ count: 5 }));
 
   if(max_id && max_id === statuses[0].id_str) // if(max_id): not the first fetch
       statuses.shift();
@@ -120,9 +123,13 @@ async function* cursorAllFavs (max_id) {
   for (let i = 0; i < statuses.length; i++) {
     yield statuses[i];
 
-    // twitter rate-limits us to 75 requests / 15 minutes
+    // twitter rate-limits us to rateLimit.remaining requests / rateLimit.reset seconds
     await new Promise(resolve => 
-      setTimeout(resolve, 60000 * 15 / (72 * statuses.length)) // 72 for tolerance
+      // 72 for tolerance
+      setTimeout(
+        resolve,
+        1000 * rateLimit.reset / ((rateLimit.remaining * statuses.length) || 1)
+      ).unref()
     );
   }
 
@@ -143,10 +150,9 @@ async function fetchFav (additionalParams) {
     }
   )
   .catch(err => {
-    // error when establishing connection
     switch (err.code) {
       case "ECONNRESET":
-      case "ETIMEOUT":
+      case "ETIMEDOUT":
         console.error(`Error: ${err.code}, check your internet connection or proxy settings.`);
         return process.exit(1);
       default: throw err;
@@ -164,7 +170,16 @@ async function fetchFav (additionalParams) {
             try {
               const text = Buffer.concat(chunks).toString();
               chunks = null;
-              return resolve(JSON.parse(text));
+              return resolve({
+                rateLimit: {
+                  limit: Number(response.headers["x-rate-limit-limit"]),
+                  remaining: Number(response.headers["x-rate-limit-remaining"]),
+                  reset: 
+                    Number(response.headers["x-rate-limit-reset"])
+                      - (Date.now() / 1000).toFixed(0)
+                },
+                statuses: JSON.parse(text)
+              });
             } catch (error) {
               return reject(error);
             }
