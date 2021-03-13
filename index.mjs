@@ -82,8 +82,6 @@ const params = {
   tweet_mode: 'extended'
 };
 
-//NOTE: https://github.com/tweepy/tweepy/blob/8dba191518366fb756440302eff86d5a868e0306/tweepy/cursor.py#L127
-
 /**
  * https://developer.twitter.com/en/docs/twitter-api/v1/tweets/post-and-engage/api-reference/get-favorites-list
  * 
@@ -101,29 +99,23 @@ async function* cursorAllFavs (max_id) {
 
   if(max_id && max_id === statuses[0].id_str) // if(max_id): not the first fetch
       statuses.shift();
-    /**
-     * Intended to remove the first status 
-     * (which should be exactly the same as the last status of last fetch)
-     * 
-     * BUT as id is larger than 2^53 - 1 thus truncated, we can't trust in the assumption above
-     * so in case some favs being skipped, comparison had been added.
-     */
 
   if(!statuses.length)
       return ;
 
   // get the minimum id
   let min_id_index = 0;
-  let min_id_imprecise = statuses[min_id_index].id;
+  let min_id = BigInt(statuses[min_id_index].id_str);
 
   for (let i = 1; i < statuses.length; i++) {
-    if (min_id_imprecise > statuses[i].id) {
+    const id_i = BigInt(statuses[i].id);
+    if (min_id > id_i) {
       min_id_index = i;
-      min_id_imprecise = statuses[i].id;
+      min_id = id_i;
     }
   }
 
-  const next_max_id = statuses[min_id_index].id_str; // as id is imprecise
+  const next_max_id = statuses[min_id_index].id_str;
 
   for (let i = 0; i < statuses.length; i++) {
     yield statuses[i];
