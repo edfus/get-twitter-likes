@@ -60,8 +60,8 @@ if(
           console.info(
             `Found ${in_db_counter} items existing in db,`,
             "indicating a strong likelihood of the user's newly liked tweets all being fetched.",
-            "\nset --smart-exit flag if auto exit at this point is expected.",
-            "\n\nwiping out `xxx exists in db` log for now on..."
+            "\nSet `--smart-exit` flag if auto exit at this point is expected.",
+            "\n\nHiding `xxx exists in db` log for now on..."
           );
         }
       }
@@ -137,6 +137,8 @@ async function* cursorAllFavs (max_id) {
   return yield* cursorAllFavs(next_max_id);
 }
 
+const isRetriedWeakMap = new WeakMap();
+
 async function fetchFav (additionalParams) {
   return oauthFetch(
     "https://api.twitter.com/1.1/favorites/list.json",
@@ -147,7 +149,18 @@ async function fetchFav (additionalParams) {
         "Accept": "application/json"
       }
     }
-  ).then(response => {
+  )
+  .catch(err => {
+    // error when establishing connection
+    switch (err.code) {
+      case "ECONNRESET":
+      case "ETIMEOUT":
+        console.error(`Error: ${err.code}, check your internet connection or proxy settings.`);
+        return process.exit(1);
+      default: throw err;
+    }
+  })
+  .then(response => {
     if(response.statusCode === 200) {
       console.info(`x-rate-limit-remaining: ${response.headers["x-rate-limit-remaining"]}`);
       return new Promise((resolve, reject) => {
@@ -171,13 +184,29 @@ async function fetchFav (additionalParams) {
           pipeline(
             response,
             createWriteStream("./log.tmp.txt"),
-            err => 
-              err
-              ? reject(err)
-              : reject(
-                `${response.statusCode} ${response.statusMessage}. Details in ./log.tmp.txt`
-              )
-          )
+            err => {
+              if(err) {
+                switch (err.code) {
+                  // connection interrupted
+                  case "ECONNRESET":
+                    if(isRetriedWeakMap.has(additionalParams)) {
+                      console.error(
+                        `Through retried, ${JSON.stringify(additionalParams)} is still failing with ${err.code}`
+                      );
+                      isRetriedWeakMap.delete(additionalParams);
+                      return resolve([]);
+                    } else {
+                      isRetriedWeakMap.set(additionalParams, true);
+                      return fetchFav(additionalParams).then(resolve, reject);
+                    }
+                  default: reject(err);
+                }
+              } else {
+                reject(
+                  `${response.statusCode} ${response.statusMessage}. Details in ./log.tmp.txt`
+                );
+              }
+          })
         } catch (error) {
           reject(error);
         }
