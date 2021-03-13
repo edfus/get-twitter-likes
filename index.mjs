@@ -1,6 +1,7 @@
 import { createWriteStream } from "fs";
 import { pipeline } from "stream";
 import { fetch as proxyFetch } from "./proxy-tunnel.mjs";
+import { request as request_https } from "https";
 import { getOauthData, getOauthHeader } from "./oauth.mjs";
 import credentials from "./creds.mjs";
 import SetDB from "./set-db.mjs"
@@ -9,8 +10,11 @@ import SetDB from "./set-db.mjs"
 const db_path = './db.csv'; // Comma-separated values
 const result_path = './favs.ndjson';
 
-const useProxy = true;
-const proxy = "http://127.0.0.1:7890";
+const useProxy = extractArg(/--(https?[-_])?proxy/) !== false;
+const proxy = extractArg(/--(https?[-_])?proxy=/) || "http://127.0.0.1:7890";
+
+const in_db_counter_limit = 20;
+const smart_exit = extractArg(/--smart-exit/) && extractArg(/--smart-exit=/) !== "false";
 
 if(
   !credentials.username
@@ -25,27 +29,50 @@ if(
 )
  throw "insufficient credentials";
 
+/**
+ * main
+ */
 (async () => {
   const db = new SetDB(db_path);
   const favs = createWriteStream(result_path, { flags:'a' });
   
   await db.loaded;
 
-  let counter = 0;
+  let counter = 0, in_db_counter = 0, in_db_logged = false;
   for await (const status of cursorAllFavs()) {
-    console.info(++counter);
     if(!db.has(status.id_str)) {
+      console.info(++counter);
+
       db.add(status.id_str);
       favs.write(JSON.stringify(status));
       favs.write("\n"); // in ndjson syntax
-    } else console.info(`${status.id_str} exists in db`);
+    } else {
+      if(!in_db_logged) {
+        console.info(++counter);
+        console.info(`${status.id_str} exists in db`);
+      }
+
+      if(++in_db_counter >= in_db_counter_limit) {
+        if(smart_exit)
+          break;
+        if(!in_db_logged && !extractArg(/--smart-exit=false/)) {
+          in_db_logged = true;
+          console.info(
+            `Found ${in_db_counter} items existing in db,`,
+            "indicating a strong likelihood of the user's newly liked tweets all being fetched.",
+            "\nset --smart-exit flag if auto exit at this point is expected.",
+            "\n\nwiping out `xxx exists in db` log for now on..."
+          );
+        }
+      }
+    }
   }
 
   favs.end(() => {
     console.info("Done.");
-    process.exit(0)
+    process.exit(0);
   })
-})()
+})();
 
 // functions
 const params = {
@@ -186,4 +213,14 @@ async function oauthFetch (url, options) {
         .end();
     });
   }
+}
+
+function extractArg(matchPattern) {
+  for (let i = 2; i < process.argv.length; i++) {
+    if (matchPattern.test(process.argv[i])) {
+      const split = process.argv[i].split(matchPattern)
+      return split[split.length - 1];
+    }
+  }
+  return false;
 }
