@@ -61,7 +61,7 @@ if(
       }
 
       if(++in_db_counter >= in_db_counter_limit) {
-        if(smart_exit)
+        if(smart_exit !== false)
           break;
         if(!in_db_logged && !extractArg(/--smart-exit=false/)) {
           in_db_logged = true;
