@@ -1,7 +1,7 @@
 {
   "name": "get-twitter-likes",
   "version": "3.1.1",
-  "description": "Fetch a list of Tweets you liked via Twitter's api",
+  "description": "Fetch the whole list of Tweets you liked via Twitter's api",
   "main": "index.js",
   "scripts": {
     "get": "node index.mjs",
