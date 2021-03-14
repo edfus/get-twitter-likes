@@ -1,16 +1,19 @@
+import { join } from "path";
+import { pipeline } from "stream";
 import { createWriteStream } from "fs";
 import { IncomingMessage } from "http";
-import { pipeline } from "stream";
-import { fetch as proxyFetch } from "./proxy-tunnel.mjs";
 import { request as request_https } from "https";
-import { getOauthData, getOauthHeader } from "./oauth.mjs";
-import credentials from "./creds.mjs";
-import SetDB from "./set-db.mjs"
 
+import SetDB from "./set-db.mjs";
+import credentials from "./creds.mjs";
+import { fetch as proxyFetch } from "./proxy-tunnel.mjs";
+import { getOauthData, getOauthHeader } from "./oauth.mjs";
 
 // main
-const db_path = './db.csv'; // Comma-separated values
-const result_path = './favs.ndjson';
+const path = extractArg(/--(output|path)=/) || "./";
+const db_path = join(path, './favs.db.csv'); // Comma-separated values
+const result_path = join(path, './favs.ndjson');
+const err_log_path = join(path, './favs.log.txt');
 
 const useProxy = extractArg(/--(https?[-_])?proxy/) !== false;
 const proxy = extractArg(/--(https?[-_])?proxy=/) || "http://127.0.0.1:7890";
@@ -39,7 +42,7 @@ if(
  */
 (async () => {
   const db = new SetDB(db_path);
-  const favs = createWriteStream(result_path, { flags:'a' });
+  const favs = createWriteStream(result_path, { flags: 'a' });
   
   await db.loaded;
 
@@ -229,12 +232,12 @@ async function fetchFav (additionalParams) {
         try {
           pipeline(
             response,
-            createWriteStream("./log.tmp.txt"),
+            createWriteStream(err_log_path),
             err => 
               err 
               ? reject(err)
               : reject(
-                  `${response.statusCode} ${response.statusMessage}. Details in ./log.tmp.txt`
+                  `${response.statusCode} ${response.statusMessage}. Details in ${err_log_path}`
                 )
           )
         } catch (error) {
