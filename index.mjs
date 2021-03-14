@@ -1,10 +1,12 @@
 import { createWriteStream } from "fs";
+import { IncomingMessage } from "http";
 import { pipeline } from "stream";
 import { fetch as proxyFetch } from "./proxy-tunnel.mjs";
 import { request as request_https } from "https";
 import { getOauthData, getOauthHeader } from "./oauth.mjs";
 import credentials from "./creds.mjs";
 import SetDB from "./set-db.mjs"
+
 
 // main
 const db_path = './db.csv'; // Comma-separated values
@@ -61,10 +63,10 @@ if(
         if(!in_db_logged && !extractArg(/--smart-exit=false/)) {
           in_db_logged = true;
           console.info(
-            `Found ${in_db_counter} items existing in db,`,
+            `\nFound ${in_db_counter} items existing in db,`,
             "indicating a strong likelihood of the user's newly liked tweets all being fetched.",
             "\nSet `--smart-exit` flag if auto exit at this point is expected.",
-            "\n\nHiding `xxx exists in db` log for now on..."
+            "\n\nHiding `xxx exists in db` log from now on..."
           );
         }
       }
@@ -126,17 +128,18 @@ async function* cursorAllFavs (max_id) {
     // twitter rate-limits us to rateLimit.remaining requests / rateLimit.reset seconds
     await new Promise(resolve => 
       // 72 for tolerance
-      setTimeout(
+      setTimeout_unref(
         resolve,
         1000 * rateLimit.reset / ((rateLimit.remaining * statuses.length) || 1)
-      ).unref()
+      )
     );
   }
 
   return yield* cursorAllFavs(next_max_id);
 }
 
-const isRetriedWeakMap = new WeakMap();
+const isRetriableWeakMap = new WeakMap();
+let has_succeeded = false;
 
 async function fetchFav (additionalParams) {
   return oauthFetch(
@@ -153,12 +156,48 @@ async function fetchFav (additionalParams) {
     switch (err.code) {
       case "ECONNRESET":
       case "ETIMEDOUT":
-        console.error(`Error: ${err.code}, check your internet connection or proxy settings.`);
-        return process.exit(1);
+        if(has_succeeded) {
+          if(isRetriableWeakMap.has(additionalParams)) {
+            // 2nd
+            console.error("Connection errored, retrying #2...");
+            has_succeeded = false;
+            return new Promise(
+              (res, rej) => setTimeout_unref(
+                () => fetchFav(additionalParams).then(res, rej),
+                2000
+              )
+            );
+          } else {
+            // 1st
+            console.error("Connection errored, retrying #1...");
+            isRetriableWeakMap.set(additionalParams, true);
+            return new Promise(
+              (res, rej) => setTimeout_unref(
+                () => fetchFav(additionalParams).then(res, rej),
+                1000
+              )
+            );
+          }
+        } else {
+          if(isRetriableWeakMap.has(additionalParams)) {
+            console.error(
+              `Through retried, ${JSON.stringify(additionalParams)} is still failing with ${err.code}`
+            );
+          }
+          // never established connection, or failed 3 times (1 failed + 2 retried)
+          console.error(`\x1b[31mError: ${err.code}, check your internet connection or proxy settings.\x1b[0m`);
+          return process.exit(1);
+        }
+        
       default: throw err;
     }
   })
   .then(response => {
+    if(response.statuses && !(response instanceof IncomingMessage)) {
+      return response; // retried response
+    }
+
+    has_succeeded = true;
     if(response.statusCode === 200) {
       console.info(`x-rate-limit-remaining: ${response.headers["x-rate-limit-remaining"]}`);
       return new Promise((resolve, reject) => {
@@ -191,29 +230,13 @@ async function fetchFav (additionalParams) {
           pipeline(
             response,
             createWriteStream("./log.tmp.txt"),
-            err => {
-              if(err) {
-                switch (err.code) {
-                  // connection interrupted
-                  case "ECONNRESET":
-                    if(isRetriedWeakMap.has(additionalParams)) {
-                      console.error(
-                        `Through retried, ${JSON.stringify(additionalParams)} is still failing with ${err.code}`
-                      );
-                      isRetriedWeakMap.delete(additionalParams);
-                      return resolve([]);
-                    } else {
-                      isRetriedWeakMap.set(additionalParams, true);
-                      return fetchFav(additionalParams).then(resolve, reject);
-                    }
-                  default: reject(err);
-                }
-              } else {
-                reject(
+            err => 
+              err 
+              ? reject(err)
+              : reject(
                   `${response.statusCode} ${response.statusMessage}. Details in ./log.tmp.txt`
-                );
-              }
-          })
+                )
+          )
         } catch (error) {
           reject(error);
         }
@@ -249,6 +272,16 @@ async function oauthFetch (url, options) {
         .end();
     });
   }
+}
+
+function setTimeout_unref(cb, milliseconds) {
+  // https://github.com/nodejs/node/blob/606df7c4e79324b9725bfcfe019a8b75bfa04c3f/lib/internal/watchdog.js#L35
+  const sigintHandler = () => timer.unref();
+  const timer = setTimeout(() => {
+    ['SIGINT', 'SIGQUIT', 'SIGTERM'].forEach(s => process.removeListener(s, sigintHandler));
+    return cb();
+  }, milliseconds);
+  ['SIGINT', 'SIGQUIT', 'SIGTERM'].forEach(s => process.once(s, sigintHandler));
 }
 
 function extractArg(matchPattern) {
