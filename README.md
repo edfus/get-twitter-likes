@@ -74,7 +74,7 @@ readonly proxy="--proxy=http://127.0.0.1:7890"
 cd ${path}/get-twitter-likes
 npm run get -- --smart-exit --output=${__dirname}/ ${proxy}
 cd ${path}/download-twitter-likes
-npm run download -- --path=${__dirname}/ --folder=Raw/ ${proxy}
+npm run download -- --path=${__dirname}/ --output-folder=${__dirname}/Raw/ ${proxy}
 
 read -p $'\n'
 ```
