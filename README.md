@@ -1,16 +1,12 @@
 # Get-twitter-likes
 
-**A Node.js script to fetch the whole list of Tweets you liked via Twitter's api**
-
----
-
 ## Features
 
-- No dependency, extremely lightweight.
+- No dependency.
 - Built-in https proxy support for accessing twitter's endpoint.
 - Perform a Ctrl + C exit at whatever time without concerning about data corruption | async operations hanging process.
 - Automatic retry when connection interrupted.
-- Respect twitter's `x-rate-limit` response header instead of inelegant fixed-window throttling.
+- Respect twitter's `X-Rate-Limit` response header instead of inelegant fixed-window throttling.
 
 ## Prerequisites
 
@@ -31,7 +27,7 @@ npm install --only=production
 
 Node.js version should be equal to or higher than 13 (async generator: 10.3.0, module import: 13)
 
-Then create `creds.mjs` (or just rename `creds-template.mjs` to `creds.mjs`) in the directory. Put tokens you got from your twitter application like following:
+Create `creds.mjs` (or just rename `creds-template.mjs` to `creds.mjs`) in the directory. Put tokens you got from your twitter application in following way:
 
 ```js
 export default {
@@ -43,7 +39,7 @@ export default {
 }
 ```
 
-## Execute
+## Usage
 
 ```bash
 npm run get
