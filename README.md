@@ -15,7 +15,7 @@
 
 You should also make sure the top *5* Tweets in your `https://twitter.com/YOURUSERNAME/likes` timeline is up to date (e.g. not liking a Tweet from 2010 right before running this script).
 
-(The reason why, if you are wondering, is sequential ids are not assigned to favs, but to the original statuses and we are relying on the minimum one of that in each fetched group for performing a hacky iteration using `max_id` param)
+(The reason why, if you are wondering, is sequential ids are not assigned to favs, but to the original statuses and we are relying on the minimum one of that in each fetched group for performing a hacky iteration using `max_id` parameter)
 
 ## Intallation
 
@@ -25,7 +25,7 @@ cd  get-twitter-likes
 npm install --only=production
 ```
 
-Node.js version should be equal to or higher than 13 (async generator: 10.3.0, module import: 13)
+Node.js version should be equal to or higher than 13 (async generator: 10.3.0, module import: 13).
 
 Create `creds.mjs` (or just rename `creds-template.mjs` to `creds.mjs`) in the directory. Put tokens you got from your twitter application in following way:
 
@@ -56,10 +56,10 @@ This will result in two files created in output folder:
   - favs.db.csv - the database storing fetched ids to avoid duplication
   - favs.ndjson - all your favs's info in [ndjson](http://ndjson.org/) format
 
-Alternatively, if you wanna download all media out from the `favs.ndjson` file, take a look at my [download-twitter-likes](https://github.com/edfus/download-twitter-likes) package.
+By the way, if you wanna download all media out from the `favs.ndjson` file, take a look at my [download-twitter-likes](https://github.com/edfus/download-twitter-likes) package.
 
 ```bash
-#! /bin/bash
+#!/bin/bash
 
 # Absolute path this script is in
 __dirname=$(dirname "$(readlink -f "$0")")
@@ -72,5 +72,5 @@ npm run get -- --smart-exit --output=${__dirname}/ ${proxy}
 cd ${path}/download-twitter-likes
 npm run download -- --path=${__dirname}/ --output-folder=${__dirname}/Raw/ ${proxy}
 
-read -p $'\n'
+read -p 'Press any key to exit...'
 ```
