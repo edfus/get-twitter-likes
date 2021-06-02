@@ -3,19 +3,19 @@
 ## Features
 
 - No dependency.
-- Built-in https proxy support for accessing twitter's endpoint.
+- Built-in https proxy support for accessing twitter's endpoints.
 - Perform a Ctrl + C exit at whatever time without concerning about data corruption | async operations hanging process.
 - Automatic retry when connection interrupted.
-- Respect twitter's `X-Rate-Limit` response header instead of inelegant fixed-window throttling.
+- Respect `X-Rate-Limit` in response headers instead of inelegant fixed-window throttling.
 
 ## Prerequisites
 
-- Created an application at apps.twitter.com <https://developer.twitter.com/en/apps>.
+- Have an application created at apps.twitter.com <https://developer.twitter.com/en/apps>.
 - [Node.js](https://nodejs.org/en/) & npm installed on your machine.
 
 You should also make sure the top *5* Tweets in your `https://twitter.com/YOURUSERNAME/likes` timeline is up to date (e.g. not liking a Tweet from 2010 right before running this script).
 
-(The reason why, if you are wondering, is sequential ids are not assigned to favs, but to the original statuses and we are relying on the minimum one of that in each fetched group for performing a hacky iteration using `max_id` parameter)
+(The reason why, if you are wondering, is sequential ids are not assigned to favs, but to the original statuses and we are relying on the minimum one of that in each fetched group for performing a hacky iteration using the `max_id` query parameter)
 
 ## Intallation
 
@@ -25,9 +25,9 @@ cd  get-twitter-likes
 npm install --only=production
 ```
 
-Node.js version should be equal to or higher than 13 (async generator: 10.3.0, module import: 13).
+Your Node.js version should be equal to or higher than 13 (async generator: 10.3.0, module import: 13).
 
-Create `creds.mjs` (or just rename `creds-template.mjs` to `creds.mjs`) in the directory. Put tokens you got from your twitter application in following way:
+Create `creds.mjs` (or just rename `creds-template.mjs` to `creds.mjs`) and put tokens you got from your twitter application into it in the following way:
 
 ```js
 export default {
@@ -52,11 +52,11 @@ npm run get
 `
 ```
 
-This will result in two files created in output folder:
-  - favs.db.csv - the database storing fetched ids to avoid duplication
-  - favs.ndjson - all your favs's info in [ndjson](http://ndjson.org/) format
+Two files will be produced in the output directory:
+  - favs.db.csv - a database storing fetched ids for avoiding duplications.
+  - favs.ndjson - all your favs's info in [ndjson](http://ndjson.org/) format.
 
-By the way, if you wanna download all media out from the `favs.ndjson` file, take a look at my [download-twitter-likes](https://github.com/edfus/download-twitter-likes) package.
+BTW, if you wanna download all media out from the `favs.ndjson` file, take a look at my [download-twitter-likes](https://github.com/edfus/download-twitter-likes) package.
 
 ```bash
 #!/bin/bash
@@ -65,12 +65,12 @@ By the way, if you wanna download all media out from the `favs.ndjson` file, tak
 __dirname=$(dirname "$(readlink -f "$0")")
 
 readonly path=/YOUR/PATH/TO/PACKAGES
-readonly proxy="--proxy=http://127.0.0.1:7890"
+readonly proxy='--proxy=http://127.0.0.1:7890'
 
-cd ${path}/get-twitter-likes
-npm run get -- --smart-exit --output=${__dirname}/ ${proxy}
-cd ${path}/download-twitter-likes
-npm run download -- --path=${__dirname}/ --output-folder=${__dirname}/Raw/ ${proxy}
+cd "${path}/get-twitter-likes"
+npm run get -- --smart-exit --output="${__dirname}/" "${proxy}"
+cd "${path}/download-twitter-likes"
+npm run download -- "--path=${__dirname}/" "--output-folder=${__dirname}/Raw/" "${proxy}"
 
 read -p 'Press any key to exit...'
 ```
